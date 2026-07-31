@@ -12,9 +12,15 @@ int main(int argc, char** argv) {
         return -1;
     }
 
-    ma_engine_play_sound(&engine, "assets/bubble.mp3", NULL);
-    puts("press anything to leave");
-    getchar();
+    ma_sound beats[16]; // array of sounds holding each of the 16 beats
+    uint32_t beat_frames = ma_engine_get_sample_rate(&engine) * 60 / 340; // sample rate divided by tempo (times 2) gives number of frames between each 1/8 note
+    for (int i = 0; i < 16; i++) {
+        char filepath[18];
+        sprintf(filepath, "assets/break%d.wav", i); //
+        ma_sound_init_from_file(&engine, filepath, 0, NULL, NULL, &beats[i]); // loads the audio file into the sound...
+        ma_sound_set_start_time_in_pcm_frames(&beats[i], beat_frames * i);    // sets that sounds future start time...
+        ma_sound_start(&beats[i]);                                            // and sets it to begin playing at that time
+    }
 
     ma_engine_uninit(&engine);
     return 0;
