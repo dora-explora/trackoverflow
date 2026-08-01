@@ -4,6 +4,7 @@ all: src/main.c
 	    -Iminiaudio \
 		src/main.c miniaudio/miniaudio.c \
 		-o build/trackoverflow \
+		-lraylib \
 		-pthread -lm
 
 run: all

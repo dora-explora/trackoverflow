@@ -2,8 +2,10 @@
 #include <stdio.h>
 #include <time.h>
 #include "../miniaudio/miniaudio.h"
+#include <raylib.h>
 
 int main(int argc, char** argv) {
+    // miniaudio engine init and sound loading
     ma_result result;
     ma_engine engine;
 
@@ -28,46 +30,84 @@ int main(int argc, char** argv) {
         ma_sound_init_from_file(&engine, filepath, 0, NULL, NULL, &soundsA[i]); // loads the audio file into the sound
         ma_sound_init_from_file(&engine, filepath, 0, NULL, NULL, &soundsB[i]);
     }
+
+    // raylib init
+    const int width = 1280;
+    const int height = 720;
+    InitWindow(width, height, "track overflow");
+    SetTargetFPS(17);
+    Font font = LoadFont("assets/PixelOperatorMono8.ttf");
+
     ma_sound_start(&soundsA[0]);
 
     uint32_t beats = 1; // how many beats have been set to start
-    uint64_t data; // variable to store each word we read
-    uint64_t* start = &data + 0x1140; // pointer to the data variable, which is near the end of the stack, plus 0xA00 because the data is boring before that
-    for (uint64_t i = 0; 1; data = *(start + i++)) { // data is accessed in 64 bit chunks, taking from i words after the start
-        if (data == 0) { continue; } // if the word is all zeroes we dont care so skip it
-        printf("0x%04lX 0x%016lX\n", i, data); // print index and data, 2 and 8 bytes of hex respectively
+    int current_beat = 1; // what beat we are currently on, goes up to 15
+    uint64_t data; // stores each word we read
+    uint64_t data_shown; // stores the value of data shown on the screen, since data switches before the bar does
+    uint64_t* cursor = &data + 0x1180; // pointer to the data variable, which is near the end of the stack, plus 0x1140 because the data is boring before that
+    data = *cursor++;
+    data_shown = data;
+    while (!WindowShouldClose()) { // main loop provided by raylib
+        if (data == 0) { data = *cursor++; continue; } // if the word is all zeroes we dont care so load another
 
-        #ifdef __x86_64__
-            #ifdef __linux__
-                if (data == 0x00776F6C66726576) { break; } // this sequence always comes up right before a crash on my machine, so break
-            #endif
-            #ifdef _WIN32
-                if (data == 0x0000000000006B6E) { break; } // same thing but windows (wine)
-            #endif
-        #endif
+        // ive determined its funnier if it crashes
+        // #ifdef __x86_64__
+            // #ifdef __linux__
+                // if (data == 0x00776F6C66726576) { break; } // this sequence always comes up right before a crash on my machine, so break
+            // #endif
+            // #ifdef _WIN32
+                // if (data == 0x0000000000006B6E) { break; } // same thing but windows (wine)
+            // #endif
+        // #endif
 
-        while (data != 0) { // exits when data has been fully exhausted or the rest is zeroes
-            // if a beat doesn't need to be loaded, then sleep for the length of a beat
-            // "beats - 1" so that the next beat is loaded before this one is finished
-            if (ma_engine_get_time_in_pcm_frames(&engine) < (beats * beat_frames - beat_frames / 2)) {
-                nanosleep(&beat_time, &rem_time); // sleeps for 1 beat
-            } else {
-                int s = data & 0b1111; // the 4 bits that select which of the 16 beats to play
-                if (ab == 1) {
-                    ma_sound_set_start_time_in_pcm_frames(&soundsA[s], beats * beat_frames);
-                    ma_sound_start(&soundsA[s]);
-                    ab = 0;
-                } else {
-                    ma_sound_set_start_time_in_pcm_frames(&soundsB[s], beats * beat_frames);
-                    ma_sound_start(&soundsB[s]);
-                    ab = 1;
-                }
-                data >>= 4;
-                beats++;
-            }
+        if (current_beat == 16) { // if data is exhausted...
+            data = *cursor++; // load another word
+            current_beat = 0;
+            continue;
         }
+        if (current_beat == 2) { data_shown = data; }
+
+        // "beats - 1" so that the next beat is loaded before this one is finished
+        if (ma_engine_get_time_in_pcm_frames(&engine) > (beats - 1) * beat_frames) {
+            int s = (data >> current_beat * 4) & 0b1111; // the 4 bits that select which of the 16 beats to play
+            if (ab == 1) {
+                ma_sound_set_start_time_in_pcm_frames(&soundsA[s], beats * beat_frames);
+                ma_sound_start(&soundsA[s]);
+                ab = 0;
+            } else {
+                ma_sound_set_start_time_in_pcm_frames(&soundsB[s], beats * beat_frames);
+                ma_sound_start(&soundsB[s]);
+                ab = 1;
+            }
+            beats++;
+            current_beat++;
+        }
+
+        BeginDrawing(); {
+
+            ClearBackground(RAYWHITE);
+
+            char data_str[17];
+            sprintf(data_str, "%016lX", data_shown);
+            DrawTextEx(font, data_str, (Vector2) { (width - 942)/2, (height - 56)/2}, 64, -4, BLACK);
+
+            char address_str[32];
+            sprintf(address_str, "Data at address 0x%012lX:", (uint64_t) cursor);
+            DrawText(address_str, (width - 688)/2, 280, 40, GRAY);
+
+            int triangle_pos = 1096 - (((current_beat + 14) % 16)) * 60;
+            DrawTriangle(
+                (Vector2) {triangle_pos, height/2 + 40},
+                (Vector2) {triangle_pos - 15, height/2 + 70},
+                (Vector2) {triangle_pos + 15, height/2 + 70},
+                GRAY
+            );
+
+        } EndDrawing();
     }
 
+    UnloadFont(font);
+    CloseWindow();
     ma_engine_uninit(&engine);
     return 0;
 }
