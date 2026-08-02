@@ -45,8 +45,8 @@ int main(int argc, char** argv) {
     uint64_t data; // stores each word we read
     uint64_t data_shown; // stores the value of data shown on the screen, since data switches before the bar does
     uint64_t* cursor = &data + 0x1180; // pointer to the data variable, which is near the end of the stack, plus 0x1140 because the data is boring before that
+    uint64_t* cursor_shown; // same thing but cursor
     data = *cursor++;
-    data_shown = data;
     while (!WindowShouldClose()) { // main loop provided by raylib
         if (data == 0) { data = *cursor++; continue; } // if the word is all zeroes we dont care so load another
 
@@ -65,7 +65,6 @@ int main(int argc, char** argv) {
             current_beat = 0;
             continue;
         }
-        if (current_beat == 2) { data_shown = data; }
 
         // "beats - 1" so that the next beat is loaded before this one is finished
         if (ma_engine_get_time_in_pcm_frames(&engine) > (beats - 1) * beat_frames) {
@@ -81,25 +80,31 @@ int main(int argc, char** argv) {
             }
             beats++;
             current_beat++;
+            if (current_beat == 2) { data_shown = data; cursor_shown = cursor; }
         }
 
         BeginDrawing(); {
 
             ClearBackground(RAYWHITE);
 
+            int box_pos = 1072 - (((current_beat + 14) % 16)) * 60;
+            // DrawRectangle(box_pos, 230, 48, 60, WHITE);
+            DrawRectangleLines(box_pos, 230, 48, 60, BLACK);
+
             char data_str[17];
             sprintf(data_str, "%016lX", data_shown);
-            DrawTextEx(font, data_str, (Vector2) { (width - 942)/2, (height - 56)/2}, 64, -4, BLACK);
+            DrawTextEx(font, data_str, (Vector2) { 169, 232 }, 64, -4, BLACK);
+            DrawText("0x", 90, 237, 64, LIGHTGRAY);
 
-            char address_str[32];
-            sprintf(address_str, "Data at address 0x%012lX:", (uint64_t) cursor);
-            DrawText(address_str, (width - 688)/2, 280, 40, GRAY);
+            char cursor_str[32];
+            sprintf(cursor_str, "Data at address 0x%012lX:", (uint64_t) cursor_shown);
+            DrawText(cursor_str, 290, 180, 40, GRAY);
 
             int triangle_pos = 1096 - (((current_beat + 14) % 16)) * 60;
             DrawTriangle(
-                (Vector2) {triangle_pos, height/2 + 40},
-                (Vector2) {triangle_pos - 15, height/2 + 70},
-                (Vector2) {triangle_pos + 15, height/2 + 70},
+                (Vector2) {triangle_pos, 300},
+                (Vector2) {triangle_pos - 15, 330},
+                (Vector2) {triangle_pos + 15, 330},
                 GRAY
             );
 
