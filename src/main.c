@@ -45,7 +45,7 @@ int main(int argc, char** argv) {
         load_beat(&engine, &beats, &current_beat, &ab, soundsA, soundsB, beat_frames, data);
         if (current_beat == 2) { data_shown = data; cursor_shown = (uint64_t) cursor; }
 
-        BeginDrawing(); draw(current_beat, data_shown, cursor_shown, font); EndDrawing();
+        BeginDrawing(); draw((current_beat + 14) % 16, data_shown, cursor_shown, font); EndDrawing();
     }
 
     UnloadFont(font);
