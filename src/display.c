@@ -1,10 +1,11 @@
 #include <stdint.h>
 #include <stdio.h>
+#include "../miniaudio/miniaudio.h"
 #include <raylib.h>
 
 Font display_init() {
     InitWindow(1280, 720, "track overflow");
-    SetTargetFPS(17);
+    SetTargetFPS(30);
     return LoadFont("assets/PixelOperatorMono8.ttf");
 }
 
@@ -28,13 +29,22 @@ const int beat_colors[16][4] = { // intensity of kick, snare, ride, and crash fr
     {0, 3, 2, 0}, // beat A
     {0, 1, 3, 0}, // beat B
     {2, 0, 2, 0}, // beat C
-    {0, 0, 0, 3}, // beat D
+    {3, 0, 0, 3}, // beat D
     {0, 0, 3, 2}, // beat E
     {0, 2, 2, 1}, // beat F
 };
 
-void draw(int beat_shown, uint64_t data_shown, uint64_t cursor_shown, Font font) {
+void draw(int beat_shown, uint64_t data_shown, uint64_t cursor_shown, Font font, float since_last_beat) {
     ClearBackground(RAYWHITE);
+
+    int s = (data_shown >> beat_shown * 4) & 0b1111;
+
+    int si = since_last_beat * 255; // aka since_intensity
+    int rect_pos = s * 80;
+    DrawRectangleGradientV(rect_pos, 0, 80, 720, (Color) {si, si, si, 128}, (Color) {si/2, si/2, si/2, 128});
+    char beat_hex[2];
+    sprintf(beat_hex, "%X", s);
+    DrawText(beat_hex, rect_pos + 20, 10, 80, (Color) {255, 255, 255, si});
 
     int box_pos = 1072 - beat_shown * 60;
     // DrawRectangle(box_pos, 230, 48, 60, WHITE);
@@ -57,11 +67,9 @@ void draw(int beat_shown, uint64_t data_shown, uint64_t cursor_shown, Font font)
         GRAY
     );
 
-    int s = (data_shown >> beat_shown * 4) & 0b1111;
-
     Color colors[4];
     for (int i = 0; i < 4; i++) {
-        int value = 255 - 64 * beat_colors[s][i];
+        int value = 255 - 64 * beat_colors[s][i] * (1 - 0.2*since_last_beat);
         colors[i] = (Color) {value, value, value, 255};
     }
 
@@ -71,5 +79,5 @@ void draw(int beat_shown, uint64_t data_shown, uint64_t cursor_shown, Font font)
     DrawCircleStroke(1200, 530, 45, 4, colors[2]); // draw ride
     DrawCircleStroke(1050, 470, 50, 4, colors[3]); // draw crash
     DrawCircleStroke(970, 530, 40, 3, RAYWHITE); // draw HH
-    DrawCircleStroke(1050, 625, 30, 2, (Color) {224, 224, 224, 255}); // draw seat
+    DrawCircleStroke(1060, 625, 30, 2, (Color) {160, 32, 32, 255}); // draw seat
 }

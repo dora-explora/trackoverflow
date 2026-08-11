@@ -18,7 +18,6 @@ int main(int argc, char** argv) {
         return -1;
     }
 
-
     Font font = display_init();
 
     ma_sound_start(&soundsA[0]);
@@ -30,7 +29,7 @@ int main(int argc, char** argv) {
     int current_beat = 1; // what beat we are currently on, goes up to 15
     uint64_t data; // stores each word we read
     uint64_t data_shown; // stores the value of data shown on the screen, since data switches before the bar does
-    uint64_t* cursor = &data + 0x1180; // pointer to the data variable, which is near the end of the stack, plus 0x1140 because the data is boring before that
+    uint64_t* cursor = &data + 0x1180; // pointer to the data variable, which is near the end of the stack, plus 0x1180 because the data is boring before that
     uint64_t cursor_shown; // same thing but cursor
     data = *cursor++;
     while (!WindowShouldClose()) { // main loop provided by raylib
@@ -45,7 +44,11 @@ int main(int argc, char** argv) {
         load_beat(&engine, &beats, &current_beat, &ab, soundsA, soundsB, beat_frames, data);
         if (current_beat == 2) { data_shown = data; cursor_shown = (uint64_t) cursor; }
 
-        BeginDrawing(); draw((current_beat + 14) % 16, data_shown, cursor_shown, font); EndDrawing();
+        int beat_shown = (current_beat + 14) % 16;
+        float since_last_beat = (float) (ma_engine_get_time_in_pcm_frames(&engine) % beat_frames) / beat_frames;
+        BeginDrawing();
+            draw(beat_shown, data_shown, cursor_shown, font, since_last_beat);
+        EndDrawing();
     }
 
     UnloadFont(font);
