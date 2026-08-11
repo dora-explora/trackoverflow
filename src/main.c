@@ -30,8 +30,9 @@ int main(int argc, char** argv) {
     uint64_t data; // stores each word we read
     uint64_t data_shown; // stores the value of data shown on the screen, since data switches before the bar does
     uint64_t* cursor = &data + 0x1180; // pointer to the data variable, which is near the end of the stack, plus 0x1180 because the data is boring before that
-    uint64_t cursor_shown; // same thing but cursor
+    uint64_t cursor_shown = (uint64_t) cursor; // same thing but cursor
     data = *cursor++;
+    data_shown = data;
     while (!WindowShouldClose()) { // main loop provided by raylib
         if (data == 0) { data = *cursor++; continue; } // if the word is all zeroes we dont care so load another
 
